@@ -9,6 +9,10 @@
 /// If defined, indicates that json library is embedded in CppTL library.
 //# define JSON_IN_CPPTL 1
 
+/// If defined, indicates that json objects use vector-like storage instead
+/// of std::map. Key-based lookups will be slower, but the data will not be
+/// alphabetized when read or written.
+//#  define JSON_USE_VECTOR 1
 /// If defined, indicates that json may leverage CppTL library
 //#  define JSON_USE_CPPTL 1
 /// If defined, indicates that cpptl vector based map should be used instead of

@@ -217,6 +217,116 @@ bool Value::CZString::isStaticString() const { return index_ == noDuplication; }
 // //////////////////////////////////////////////////////////////////
 // //////////////////////////////////////////////////////////////////
 // //////////////////////////////////////////////////////////////////
+// class Value::ObjectValues
+// //////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////
+#ifdef JSON_USE_VECTOR
+
+
+Value::ObjectValues::ObjectValues()
+    : capacity_(2),
+      alloc_(),
+      size_(0),
+      values_(alloc_.allocate(capacity_)) {}
+
+Value::ObjectValues::ObjectValues(const ObjectValues& other)
+    : capacity_(other.capacity_),
+      alloc_(other.alloc_),
+      size_(other.size_),
+      values_(alloc_.allocate(capacity_)) {
+  construct(other.values_);
+}
+
+Value::ObjectValues::~ObjectValues() {
+  destroy(values_);
+  alloc_.deallocate(values_, capacity_);
+}
+
+bool Value::ObjectValues::empty() {
+  return size_ == 0;
+}
+
+unsigned int Value::ObjectValues::size() {
+  return size_;
+}
+
+bool operator<(const Value::ObjectValues& lhs, const Value::ObjectValues& rhs) {
+  return std::lexicographical_compare(lhs.begin(), lhs.end(), rhs.begin(), rhs.end());
+}
+bool operator==(const Value::ObjectValues& lhs, const Value::ObjectValues& rhs) {
+  return lhs.size_ == rhs.size_ && std::equal(lhs.begin(), lhs.end(), rhs.begin());
+}
+
+Value::ObjectValues::iterator Value::ObjectValues::begin() {
+  return values_;
+}
+
+Value::ObjectValues::iterator Value::ObjectValues::end() {
+  return values_ + size_;
+}
+
+Value::ObjectValues::const_iterator Value::ObjectValues::begin() const {
+  return values_;
+}
+
+Value::ObjectValues::const_iterator Value::ObjectValues::end() const {
+  return values_ + size_;
+}
+
+Value::ObjectValues::iterator Value::ObjectValues::find(const CZString& str) {
+  return std::find_if(begin(), end(), [&](const ObjectValue& val) { return val.first == str; });
+}
+
+Value::ObjectValues::iterator Value::ObjectValues::lower_bound(const CZString& str) {
+  return find(str);
+}
+
+Value::ObjectValues::iterator Value::ObjectValues::insert(iterator it, const value_type& value) {
+  if (size_ == capacity_) {
+    capacity_ *= 2;
+    pointer_type oldValues = values_;
+    values_ = alloc_.allocate(capacity_);
+    construct(oldValues);
+    destroy(oldValues);
+    alloc_.deallocate(oldValues, size_);
+  }
+  alloc_.construct(values_ + size_, value);
+  ++size_;
+  return end() - 1;
+}
+
+Value::ObjectValues::iterator Value::ObjectValues::erase(const CZString& str) {
+  return erase(find(str));
+}
+
+Value::ObjectValues::iterator Value::ObjectValues::erase(iterator it) {
+  --size_;
+  alloc_.destroy(it);
+  std::copy(it + 1, end(), it);
+  return it;
+}
+
+void Value::ObjectValues::clear() {
+  destroy(values_);
+  size_ = 0;
+}
+
+void Value::ObjectValues::construct(pointer_type otherValues) {
+  for (Value::UInt i = 0; i < size_; ++i)
+    alloc_.construct(values_ + i, otherValues[i]);
+}
+
+void Value::ObjectValues::destroy(pointer_type values) {
+  for (pointer_type value = values, end = values + size_; value != end; ++value)
+    alloc_.destroy(value);
+}
+
+#endif // ifdef JSON_USE_VECTOR
+
+// //////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////
 // class Value::Value
 // //////////////////////////////////////////////////////////////////
 // //////////////////////////////////////////////////////////////////
@@ -397,8 +507,10 @@ Value::~Value() {
     mapAllocator()->destructMap(value_.map_);
     break;
 #endif
+#ifndef JSON_USE_VECTOR
   default:
     JSON_ASSERT_UNREACHABLE;
+#endif
   }
 
   if (comments_)

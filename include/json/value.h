@@ -13,7 +13,11 @@
 #include <vector>
 
 #ifndef JSON_USE_CPPTL_SMALLMAP
+#ifndef JSON_USE_VECTOR
 #include <map>
+#else
+#include <algorithm>
+#endif
 #else
 #include <cpptl/smallmap.h>
 #endif
@@ -186,7 +190,55 @@ private:
 
 public:
 #ifndef JSON_USE_CPPTL_SMALLMAP
+#ifndef JSON_USE_VECTOR
   typedef std::map<CZString, Value> ObjectValues;
+#else
+  typedef std::pair<CZString, Value> ObjectValue;
+
+  class ObjectValues {
+  public:
+
+    /*class iterator {
+    public:
+      ObjectValue& operator*();
+
+    private:
+      ObjectValue* ptr_; 
+    };
+    class const_iterator {};*/
+    typedef ObjectValue value_type;
+    typedef value_type* pointer_type;
+    typedef pointer_type iterator;
+    typedef const value_type* const_iterator;
+
+  public:
+    ObjectValues();
+    ObjectValues(const ObjectValues& other);
+    ~ObjectValues();
+    bool empty();
+    unsigned int size();
+    friend bool operator<(const ObjectValues& lhs, const ObjectValues& rhs);
+    friend bool operator==(const ObjectValues& lhs, const ObjectValues& rhs);
+    iterator begin();
+    const_iterator begin() const;
+    iterator end();
+    const_iterator end() const;
+    iterator find(const CZString& str);
+    iterator lower_bound(const CZString& str);
+    iterator insert(iterator it, const value_type& value);
+    iterator erase(const CZString& str);
+    iterator erase(iterator it);
+    void clear();
+
+  private:
+    void construct(pointer_type otherValues);
+    void destroy(pointer_type values);
+    UInt capacity_;
+    std::allocator<value_type> alloc_;
+    UInt size_;
+    pointer_type values_;
+  };
+#endif // ifndef JSON_USE_VECTOR
 #else
   typedef CppTL::SmallMap<CZString, Value> ObjectValues;
 #endif // ifndef JSON_USE_CPPTL_SMALLMAP
