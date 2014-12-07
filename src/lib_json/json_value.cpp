@@ -279,7 +279,7 @@ Value::ObjectValues::iterator Value::ObjectValues::find(const CZString& str) {
 }
 
 Value::ObjectValues::iterator Value::ObjectValues::lower_bound(const CZString& str) {
-  return find(str);
+  return end();
 }
 
 Value::ObjectValues::iterator Value::ObjectValues::insert(iterator it, const value_type& value) {
