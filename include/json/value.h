@@ -198,14 +198,6 @@ public:
   class ObjectValues {
   public:
 
-    /*class iterator {
-    public:
-      ObjectValue& operator*();
-
-    private:
-      ObjectValue* ptr_; 
-    };
-    class const_iterator {};*/
     typedef ObjectValue value_type;
     typedef value_type* pointer_type;
     typedef pointer_type iterator;
