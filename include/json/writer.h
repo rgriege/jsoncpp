@@ -105,8 +105,6 @@ public: // overridden from Writer
 
 private:
   void writeValue(const Value& value);
-  void writeArrayValue(const Value& value);
-  bool isMultineArray(const Value& value);
   void pushValue(const std::string& value);
   void writeIndent();
   void writeWithIndent(const std::string& value);
@@ -137,15 +135,6 @@ private:
  *     - if not empty the print '{', line break & indent, print one value per
  line
  *       and then unindent and line break and print '}'.
- * - Array value:
- *     - if empty then print [] without indent and line break
- *     - if the array contains no object value, empty array or some other value
- types,
- *       and all the values fit on one lines, then print the array on a single
- line.
- *     - otherwise, it the values do not fit on one line, or the array contains
- *       object or non empty array, then print one value per line.
- *
  * If the Value have comments then they are outputed according to their
  #CommentPlacement.
  *
@@ -168,8 +157,6 @@ public:
 
 private:
   void writeValue(const Value& value);
-  void writeArrayValue(const Value& value);
-  bool isMultineArray(const Value& value);
   void pushValue(const std::string& value);
   void writeIndent();
   void writeWithIndent(const std::string& value);

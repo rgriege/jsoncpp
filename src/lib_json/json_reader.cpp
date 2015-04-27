@@ -131,14 +131,14 @@ bool Reader::parse(const char* beginDoc,
   if (collectComments_ && !commentsBefore_.empty())
     root.setComment(commentsBefore_, commentAfter);
   if (features_.strictRoot_) {
-    if (!root.isArray() && !root.isObject()) {
+    if (!root.isObject()) {
       // Set error location to start of doc, ideally should be first token found
       // in doc
       token.type_ = tokenError;
       token.start_ = beginDoc;
       token.end_ = endDoc;
       addError(
-          "A valid JSON document must be either an array or an object value.",
+          "A valid JSON document must be an object value.",
           token);
       return false;
     }
@@ -169,10 +169,6 @@ bool Reader::readValue() {
     successful = readObject(token);
     currentValue().setOffsetLimit(current_ - begin_);
     break;
-  case tokenArrayBegin:
-    successful = readArray(token);
-    currentValue().setOffsetLimit(current_ - begin_);
-    break;
   case tokenNumber:
     successful = decodeNumber(token);
     break;
@@ -194,21 +190,11 @@ bool Reader::readValue() {
     currentValue().setOffsetStart(token.start_ - begin_);
     currentValue().setOffsetLimit(token.end_ - begin_);
     break;
-  case tokenArraySeparator:
-    if (features_.allowDroppedNullPlaceholders_) {
-      // "Un-read" the current token and mark the current value as a null
-      // token.
-      current_--;
-      currentValue() = Value();
-      currentValue().setOffsetStart(current_ - begin_ - 1);
-      currentValue().setOffsetLimit(current_ - begin_);
-      break;
-    }
   // Else, fall through...
   default:
     currentValue().setOffsetStart(token.start_ - begin_);
     currentValue().setOffsetLimit(token.end_ - begin_);
-    return addError("Syntax error: value, object or array expected.", token);
+    return addError("Syntax error: value or object expected.", token);
   }
 
   if (collectComments_) {
@@ -248,12 +234,6 @@ bool Reader::readToken(Token& token) {
   case '}':
     token.type_ = tokenObjectEnd;
     break;
-  case '[':
-    token.type_ = tokenArrayBegin;
-    break;
-  case ']':
-    token.type_ = tokenArrayEnd;
-    break;
   case '"':
     token.type_ = tokenString;
     ok = readString();
@@ -289,7 +269,7 @@ bool Reader::readToken(Token& token) {
     ok = match("ull", 3);
     break;
   case ',':
-    token.type_ = tokenArraySeparator;
+    token.type_ = tokenObjectSeparator;
     break;
   case ':':
     token.type_ = tokenMemberSeparator;
@@ -432,7 +412,7 @@ bool Reader::readObject(Token& tokenStart) {
       return addErrorAndRecover(
           "Missing ':' after object member name", colon, tokenObjectEnd);
     }
-    Value& value = currentValue()[name];
+    Value& value = currentValue().append(name);
     nodes_.push(&value);
     bool ok = readValue();
     nodes_.pop();
@@ -441,7 +421,7 @@ bool Reader::readObject(Token& tokenStart) {
 
     Token comma;
     if (!readToken(comma) ||
-        (comma.type_ != tokenObjectEnd && comma.type_ != tokenArraySeparator &&
+        (comma.type_ != tokenObjectEnd && comma.type_ != tokenObjectSeparator &&
          comma.type_ != tokenComment)) {
       return addErrorAndRecover(
           "Missing ',' or '}' in object declaration", comma, tokenObjectEnd);
@@ -454,43 +434,6 @@ bool Reader::readObject(Token& tokenStart) {
   }
   return addErrorAndRecover(
       "Missing '}' or object member name", tokenName, tokenObjectEnd);
-}
-
-bool Reader::readArray(Token& tokenStart) {
-  currentValue() = Value(arrayValue);
-  currentValue().setOffsetStart(tokenStart.start_ - begin_);
-  skipSpaces();
-  if (*current_ == ']') // empty array
-  {
-    Token endArray;
-    readToken(endArray);
-    return true;
-  }
-  int index = 0;
-  for (;;) {
-    Value& value = currentValue()[index++];
-    nodes_.push(&value);
-    bool ok = readValue();
-    nodes_.pop();
-    if (!ok) // error already set
-      return recoverFromError(tokenArrayEnd);
-
-    Token token;
-    // Accept Comment after last item in the array.
-    ok = readToken(token);
-    while (token.type_ == tokenComment && ok) {
-      ok = readToken(token);
-    }
-    bool badTokenType =
-        (token.type_ != tokenArraySeparator && token.type_ != tokenArrayEnd);
-    if (!ok || badTokenType) {
-      return addErrorAndRecover(
-          "Missing ',' or ']' in array declaration", token, tokenArrayEnd);
-    }
-    if (token.type_ == tokenArrayEnd)
-      break;
-  }
-  return true;
 }
 
 bool Reader::decodeNumber(Token& token) {

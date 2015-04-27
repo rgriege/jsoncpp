@@ -1,3 +1,24 @@
+Notice
+------
+
+This fork of JsonCpp is designed to work with a slightly modified version
+of the JSON format.  The primary difference is allowing objects to have multiple
+members with the same key.  The new format is designed to be more stream-friendly
+by not requiring an entire document before parsing (although the current
+library still reads the entire document).  Internally, the core change is
+the replacement of the object storage map with a vector.
+
+The JSON format has been modified in the following ways:
+ - Removes arrays.
+ - Objects can contain multiple values with the same key.
+
+In addition, serialization/deserialization have been changed in the following ways:
+ - Object member order is maintained.
+
+As a result, the interface has changed.  Random access/insertion of object
+members has been removed.  Iteration is the only way to access members,
+and appending is the only way to add them.
+
 Introduction
 ------------
 

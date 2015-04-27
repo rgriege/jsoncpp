@@ -158,14 +158,12 @@ private:
     tokenEndOfStream = 0,
     tokenObjectBegin,
     tokenObjectEnd,
-    tokenArrayBegin,
-    tokenArrayEnd,
     tokenString,
     tokenNumber,
     tokenTrue,
     tokenFalse,
     tokenNull,
-    tokenArraySeparator,
+    tokenObjectSeparator,
     tokenMemberSeparator,
     tokenComment,
     tokenError
@@ -198,7 +196,6 @@ private:
   void readNumber();
   bool readValue();
   bool readObject(Token& token);
-  bool readArray(Token& token);
   bool decodeNumber(Token& token);
   bool decodeNumber(Token& token, Value& decoded);
   bool decodeString(Token& token);

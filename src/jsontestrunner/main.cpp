@@ -92,29 +92,13 @@ printValueTree(FILE* fout, Json::Value& value, const std::string& path = ".") {
   case Json::booleanValue:
     fprintf(fout, "%s=%s\n", path.c_str(), value.asBool() ? "true" : "false");
     break;
-  case Json::arrayValue: {
-    fprintf(fout, "%s=[]\n", path.c_str());
-    int size = value.size();
-    for (int index = 0; index < size; ++index) {
-      static char buffer[16];
-#if defined(_MSC_VER) && defined(__STDC_SECURE_LIB__)
-      sprintf_s(buffer, sizeof(buffer), "[%d]", index);
-#else
-      snprintf(buffer, sizeof(buffer), "[%d]", index);
-#endif
-      printValueTree(fout, value[index], path + buffer);
-    }
-  } break;
   case Json::objectValue: {
     fprintf(fout, "%s={}\n", path.c_str());
-    Json::Value::Members members(value.getMemberNames());
-    std::sort(members.begin(), members.end());
     std::string suffix = *(path.end() - 1) == '.' ? "" : ".";
-    for (Json::Value::Members::iterator it = members.begin();
-         it != members.end();
+    for (Json::Value::iterator it = value.begin();
+         it != value.end();
          ++it) {
-      const std::string& name = *it;
-      printValueTree(fout, value[name], path + suffix + name);
+      printValueTree(fout, *it, path + suffix + it.memberName());
     }
   } break;
   default:

@@ -216,27 +216,15 @@ void FastWriter::writeValue(const Value& value) {
   case booleanValue:
     document_ += valueToString(value.asBool());
     break;
-  case arrayValue: {
-    document_ += '[';
-    int size = value.size();
-    for (int index = 0; index < size; ++index) {
-      if (index > 0)
-        document_ += ',';
-      writeValue(value[index]);
-    }
-    document_ += ']';
-  } break;
   case objectValue: {
-    Value::Members members(value.getMemberNames());
     document_ += '{';
-    for (Value::Members::iterator it = members.begin(); it != members.end();
+    for (Value::const_iterator it = value.begin(); it != value.end();
          ++it) {
-      const std::string& name = *it;
-      if (it != members.begin())
+      if (it != value.begin())
         document_ += ',';
-      document_ += valueToQuotedString(name.c_str());
+      document_ += valueToQuotedString(it.memberName());
       document_ += yamlCompatiblityEnabled_ ? ": " : ":";
-      writeValue(value[name]);
+      writeValue(*it);
     }
     document_ += '}';
   } break;
@@ -280,25 +268,20 @@ void StyledWriter::writeValue(const Value& value) {
   case booleanValue:
     pushValue(valueToString(value.asBool()));
     break;
-  case arrayValue:
-    writeArrayValue(value);
-    break;
   case objectValue: {
-    Value::Members members(value.getMemberNames());
-    if (members.empty())
+    if (value.empty())
       pushValue("{}");
     else {
       writeWithIndent("{");
       indent();
-      Value::Members::iterator it = members.begin();
+      Value::const_iterator it = value.begin();
       for (;;) {
-        const std::string& name = *it;
-        const Value& childValue = value[name];
+        const Value& childValue = *it;
         writeCommentBeforeValue(childValue);
-        writeWithIndent(valueToQuotedString(name.c_str()));
+        writeWithIndent(valueToQuotedString(it.memberName()));
         document_ += " : ";
         writeValue(childValue);
-        if (++it == members.end()) {
+        if (++it == value.end()) {
           writeCommentAfterValueOnSameLine(childValue);
           break;
         }
@@ -310,74 +293,6 @@ void StyledWriter::writeValue(const Value& value) {
     }
   } break;
   }
-}
-
-void StyledWriter::writeArrayValue(const Value& value) {
-  unsigned size = value.size();
-  if (size == 0)
-    pushValue("[]");
-  else {
-    bool isArrayMultiLine = isMultineArray(value);
-    if (isArrayMultiLine) {
-      writeWithIndent("[");
-      indent();
-      bool hasChildValue = !childValues_.empty();
-      unsigned index = 0;
-      for (;;) {
-        const Value& childValue = value[index];
-        writeCommentBeforeValue(childValue);
-        if (hasChildValue)
-          writeWithIndent(childValues_[index]);
-        else {
-          writeIndent();
-          writeValue(childValue);
-        }
-        if (++index == size) {
-          writeCommentAfterValueOnSameLine(childValue);
-          break;
-        }
-        document_ += ',';
-        writeCommentAfterValueOnSameLine(childValue);
-      }
-      unindent();
-      writeWithIndent("]");
-    } else // output on a single line
-    {
-      assert(childValues_.size() == size);
-      document_ += "[ ";
-      for (unsigned index = 0; index < size; ++index) {
-        if (index > 0)
-          document_ += ", ";
-        document_ += childValues_[index];
-      }
-      document_ += " ]";
-    }
-  }
-}
-
-bool StyledWriter::isMultineArray(const Value& value) {
-  int size = value.size();
-  bool isMultiLine = size * 3 >= rightMargin_;
-  childValues_.clear();
-  for (int index = 0; index < size && !isMultiLine; ++index) {
-    const Value& childValue = value[index];
-    isMultiLine =
-        isMultiLine || ((childValue.isArray() || childValue.isObject()) &&
-                        childValue.size() > 0);
-  }
-  if (!isMultiLine) // check if line length > max line length
-  {
-    childValues_.reserve(size);
-    addChildValues_ = true;
-    int lineLength = 4 + (size - 1) * 2; // '[ ' + ', '*n + ' ]'
-    for (int index = 0; index < size; ++index) {
-      writeValue(value[index]);
-      lineLength += int(childValues_[index].length());
-    }
-    addChildValues_ = false;
-    isMultiLine = isMultiLine || lineLength >= rightMargin_;
-  }
-  return isMultiLine;
 }
 
 void StyledWriter::pushValue(const std::string& value) {
@@ -503,25 +418,20 @@ void StyledStreamWriter::writeValue(const Value& value) {
   case booleanValue:
     pushValue(valueToString(value.asBool()));
     break;
-  case arrayValue:
-    writeArrayValue(value);
-    break;
   case objectValue: {
-    Value::Members members(value.getMemberNames());
-    if (members.empty())
+    if (value.empty())
       pushValue("{}");
     else {
       writeWithIndent("{");
       indent();
-      Value::Members::iterator it = members.begin();
+    Value::const_iterator it = value.begin();
       for (;;) {
-        const std::string& name = *it;
-        const Value& childValue = value[name];
+        const Value& childValue = *it;
         writeCommentBeforeValue(childValue);
-        writeWithIndent(valueToQuotedString(name.c_str()));
+        writeWithIndent(valueToQuotedString(it.memberName()));
         *document_ << " : ";
         writeValue(childValue);
-        if (++it == members.end()) {
+        if (++it == value.end()) {
           writeCommentAfterValueOnSameLine(childValue);
           break;
         }
@@ -533,74 +443,6 @@ void StyledStreamWriter::writeValue(const Value& value) {
     }
   } break;
   }
-}
-
-void StyledStreamWriter::writeArrayValue(const Value& value) {
-  unsigned size = value.size();
-  if (size == 0)
-    pushValue("[]");
-  else {
-    bool isArrayMultiLine = isMultineArray(value);
-    if (isArrayMultiLine) {
-      writeWithIndent("[");
-      indent();
-      bool hasChildValue = !childValues_.empty();
-      unsigned index = 0;
-      for (;;) {
-        const Value& childValue = value[index];
-        writeCommentBeforeValue(childValue);
-        if (hasChildValue)
-          writeWithIndent(childValues_[index]);
-        else {
-          writeIndent();
-          writeValue(childValue);
-        }
-        if (++index == size) {
-          writeCommentAfterValueOnSameLine(childValue);
-          break;
-        }
-        *document_ << ",";
-        writeCommentAfterValueOnSameLine(childValue);
-      }
-      unindent();
-      writeWithIndent("]");
-    } else // output on a single line
-    {
-      assert(childValues_.size() == size);
-      *document_ << "[ ";
-      for (unsigned index = 0; index < size; ++index) {
-        if (index > 0)
-          *document_ << ", ";
-        *document_ << childValues_[index];
-      }
-      *document_ << " ]";
-    }
-  }
-}
-
-bool StyledStreamWriter::isMultineArray(const Value& value) {
-  int size = value.size();
-  bool isMultiLine = size * 3 >= rightMargin_;
-  childValues_.clear();
-  for (int index = 0; index < size && !isMultiLine; ++index) {
-    const Value& childValue = value[index];
-    isMultiLine =
-        isMultiLine || ((childValue.isArray() || childValue.isObject()) &&
-                        childValue.size() > 0);
-  }
-  if (!isMultiLine) // check if line length > max line length
-  {
-    childValues_.reserve(size);
-    addChildValues_ = true;
-    int lineLength = 4 + (size - 1) * 2; // '[ ' + ', '*n + ' ]'
-    for (int index = 0; index < size; ++index) {
-      writeValue(value[index]);
-      lineLength += int(childValues_[index].length());
-    }
-    addChildValues_ = false;
-    isMultiLine = isMultiLine || lineLength >= rightMargin_;
-  }
-  return isMultiLine;
 }
 
 void StyledStreamWriter::pushValue(const std::string& value) {
