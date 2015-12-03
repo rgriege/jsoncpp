@@ -401,7 +401,7 @@ void StyledStreamWriter::write(std::ostream& out, const Value& root) {
 void StyledStreamWriter::writeValue(const Value& value) {
   switch (value.type()) {
   case nullValue:
-    pushValue("null");
+	  pushValue("{}");
     break;
   case intValue:
     pushValue(valueToString(value.asLargestInt()));
@@ -422,14 +422,14 @@ void StyledStreamWriter::writeValue(const Value& value) {
     if (value.empty())
       pushValue("{}");
     else {
-      writeWithIndent("{");
+      *document_ << "{";
       indent();
     Value::const_iterator it = value.begin();
       for (;;) {
         const Value& childValue = *it;
         writeCommentBeforeValue(childValue);
         writeWithIndent(valueToQuotedString(it.memberName()));
-        *document_ << " : ";
+        *document_ << ": ";
         writeValue(childValue);
         if (++it == value.end()) {
           writeCommentAfterValueOnSameLine(childValue);
